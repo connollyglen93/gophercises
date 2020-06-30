@@ -28,11 +28,13 @@ var wg sync.WaitGroup
 func main() {
 	var timeLimit int
 	var shuffle bool
+	var fileName string
 	flag.IntVar(&timeLimit, "time", 10, "Define how long the user had to complete the quiz")
 	flag.BoolVar(&shuffle, "shuffle", false, "Define whether the quiz is shuffled (default is false)")
+	flag.StringVar(&fileName, "csvFile", "problems.csv", "A csv file in the format of question,answer")
 	flag.Parse()
 
-	game, err := getRounds("problems.csv", shuffle)
+	game, err := getRounds(fileName, shuffle)
 	if err != nil {
 		panic(err)
 	}
@@ -47,12 +49,8 @@ func main() {
 	wg.Add(len(game.rounds))
 	//Purposely utilizing the fact that the `game` variable will change it's value after the declaration of this function.
 	go func() {
-		duration, err := time.ParseDuration(strLimit + "s")
-		if err != nil {
-			panic(err)
-		}
-		time.Sleep(duration)
-		fmt.Println("Times Up!")
+		time.Sleep(time.Duration(timeLimit) * time.Second)
+		fmt.Println("\nTimes Up!")
 		game.printSummary()
 		os.Exit(1)
 	}()
@@ -85,7 +83,7 @@ func (game game) printSummary() {
 		score = 0
 	}
 
-	fmt.Printf("Score:\nCorrect: %d\nIncorrect: %d\nTotalScore: %.1f%% \n", correct, incorrect, score)
+	fmt.Printf("\nScore\nCorrect: %d\nIncorrect: %d\nTotalScore: %.1f%% \n", correct, incorrect, score)
 }
 
 func (game *game) shuffle() {
@@ -96,7 +94,7 @@ func (game *game) shuffle() {
 func processRound(game *game, i int) {
 	console := bufio.NewReader(os.Stdin)
 
-	fmt.Println(game.rounds[i].q + ":")
+	fmt.Print(game.rounds[i].q + " = ")
 
 	solution, err := console.ReadString('\n')
 	if err != nil {
@@ -123,6 +121,7 @@ func getRounds(path string, shuffle bool) (game, error) {
 	f, err := os.Open(path)
 	game := game{make([]round, 0)}
 	if err != nil {
+		fmt.Printf("Failed to open CSV file: %s\n", path)
 		return game, err
 	}
 	defer f.Close()
